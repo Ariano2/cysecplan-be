@@ -38,6 +38,22 @@ participantRouter.post(
         } = req.body;
         if (!['train', 'flight', 'bus', 'car', 'other'].includes(modeOfTravel))
           throw new Error('Travel Mode not valid');
+        if (remarks && remarks.length > 500)
+          throw new Error('Remarks must be less than 500 characters');
+        console.log(new Date(preferredDate).toISOString(), workshop.startDate);
+        console.log(new Date(preferredDate).toISOString() > workshop.startDate);
+        if (
+          !originCity ||
+          !modeOfTravel ||
+          !preferredDate ||
+          !accommodationRequired
+        )
+          throw new Error('Invalid Request fill all details');
+        if (
+          new Date(preferredDate).toISOString() >
+          new Date(workshop.startDate).toISOString()
+        )
+          throw new Error('Travel Dates must be before start of workshop');
         request = await Request.insertOne({
           workshopId,
           participantId: req.participant._id,

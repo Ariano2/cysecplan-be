@@ -14,6 +14,7 @@ const productRouter = require('./routers/product');
 const cartRouter = require('./routers/cart');
 const commentRouter = require('./routers/comment');
 const articleRouter = require('./routers/article');
+const profileRouter = require('./routers/profile');
 
 app.use(
   cors({
@@ -26,9 +27,10 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use('/', authRouter);
-app.use('/', workshopRouter);
 app.use('/', participantRouter);
 app.use('/', adminRouter);
+app.use('/', profileRouter);
+app.use('/', workshopRouter);
 app.use('/', productRouter);
 app.use('/', cartRouter);
 app.use('/', articleRouter);

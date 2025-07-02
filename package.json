@@ -1,7 +1,7 @@
 {
-  "name": "dmrc",
+  "name": "cysecplan",
   "version": "1.0.0",
-  "description": "Delhi Metro Web App",
+  "description": "Cybsersecurity Portal",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -10,18 +10,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ariano2/dmrc-backend.git"
+    "url": "git+https://github.com/Ariano2/cysecplan_be.git"
   },
   "keywords": [
-    "metro",
-    "booking"
+    "workshop",
+    "cybersecurity",
+    "awareness"
   ],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Ariano2/dmrc-backend/issues"
+    "url": "https://github.com/Ariano2/cysecplan_be/issues"
   },
-  "homepage": "https://github.com/Ariano2/dmrc-backend#readme",
+  "homepage": "https://github.com/Ariano2/cysecplane_be#readme",
   "dependencies": {
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -29,6 +30,7 @@
     "express": "^5.1.0",
     "json": "^11.0.0",
     "jsonwebtoken": "^9.0.2",
+    "marked": "^15.0.12",
     "mongoose": "^8.15.1",
     "multer": "^2.0.1",
     "nodemon": "^3.1.10"

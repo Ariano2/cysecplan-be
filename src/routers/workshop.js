@@ -23,11 +23,14 @@ workshopRouter.post('/api/workshop/create', adminAuth, async (req, res) => {
   } = req.body;
   try {
     // Validate required fields
-    if (!title || !startDate || !endDate) {
+    if (!title || !startDate || !endDate)
       return res
         .status(400)
         .json({ message: 'Title, startDate, and endDate are required' });
-    }
+    if (title.length < 5 || title.length > 200)
+      return res
+        .status(400)
+        .json({ message: 'Title Length must be 4-200 characters' });
 
     // Validate date logic
     const start = new Date(startDate);
@@ -103,9 +106,7 @@ workshopRouter.post('/api/workshop/create', adminAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating workshop:', error);
-    return res
-      .status(500)
-      .json({ message: 'Server error while creating workshop' });
+    return res.status(500).json({ message: err.message });
   }
 });
 
@@ -246,6 +247,59 @@ workshopRouter.patch(
       // Validate ID format
       if (!workshopId.match(/^[0-9a-fA-F]{24}$/)) {
         return res.status(400).json({ message: 'Invalid workshop ID format' });
+      }
+      if (!title || !startDate || !endDate)
+        return res
+          .status(400)
+          .json({ message: 'Title, startDate, and endDate are required' });
+      if (title.length < 5 || title.length > 200)
+        return res
+          .status(400)
+          .json({ message: 'Title Length must be 4-200 characters' });
+
+      // Validate date logic
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (start >= end) {
+        return res
+          .status(400)
+          .json({ message: 'End date must be after start date' });
+      }
+
+      if (registrationDeadline) {
+        const regDeadline = new Date(registrationDeadline);
+        if (regDeadline > start) {
+          return res.status(400).json({
+            message:
+              'Registration deadline must be before or equal to start date',
+          });
+        }
+      }
+
+      // Validate participants if provided
+      if (participants && participants.length > 0) {
+        const validParticipants = await mongoose
+          .model('Participant')
+          .find({ _id: { $in: participants } });
+        if (validParticipants.length !== participants.length) {
+          return res
+            .status(400)
+            .json({ message: 'One or more participant IDs are invalid' });
+        }
+      }
+
+      // Validate capacity if provided
+      if (capacity && (isNaN(capacity) || capacity < 1)) {
+        return res
+          .status(400)
+          .json({ message: 'Capacity must be a positive number' });
+      }
+
+      // Validate price if provided
+      if (price && (isNaN(price) || price < 0)) {
+        return res
+          .status(400)
+          .json({ message: 'Price must be a non-negative number' });
       }
 
       const workshop = await Workshop.findById(workshopId);

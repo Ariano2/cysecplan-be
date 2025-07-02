@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Article = require('../models/article');
+const marked = require('marked');
 const { adminAuth, participantAuth } = require('../middlewares/auth');
 const articleRouter = express.Router();
 
