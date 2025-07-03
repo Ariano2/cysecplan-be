@@ -2,16 +2,25 @@ const express = require('express');
 const Participant = require('../models/participant');
 const Admin = require('../models/admin');
 const authRouter = express.Router();
+const bcrypt = require('bcrypt');
 
 //participant sign up
 authRouter.post('/api/participant/register', async (req, res) => {
   try {
     const { firstName, lastName, emailId, password } = req.body;
+    const passwordRegex = new RegExp(
+      '^(?=.*[a-z])(?=.*[A-Z])(?=.*d)(?=.*[^a-zA-Zd]).{5,}$'
+    );
+    if (!passwordRegex.test(password))
+      throw new Error(
+        'Password must contain minimum 1 uppercase, 1 lowercase, 1 special character and a number and length more than 4'
+      );
+    const hashedPassword = await bcrypt.hash(password, 10);
     const participant = new Participant({
       firstName,
       lastName,
       emailId,
-      password,
+      password: hashedPassword,
     });
     await participant.save();
     const token = await participant.generateJWT();
@@ -32,7 +41,9 @@ authRouter.post('/api/participant/login', async (req, res) => {
     if (!participant) {
       throw new Error('no participant with provided email');
     }
-    if (participant.password !== password) {
+    // compare plaintext pwd to hashed pwd
+    const isPwdValid = await bcrypt.compare(password, participant.password);
+    if (!isPwdValid) {
       throw new Error('Invalid Password');
     }
     const token = await participant.generateJWT();
@@ -54,6 +65,14 @@ authRouter.post('/api/admin/register', async (req, res) => {
       password,
       role,
     });
+    const passwordRegex = new RegExp(
+      '^(?=.*[a-z])(?=.*[A-Z])(?=.*d)(?=.*[^a-zA-Zd]).{5,}$'
+    );
+    if (!passwordRegex.test(password))
+      throw new Error(
+        'Password must contain minimum 1 uppercase, 1 lowercase, 1 special character and a number and length more than 4'
+      );
+    const hashedPassword = await bcrypt.hash(password, 10);
     await admin.save();
     const token = await admin.generateJWT();
     res.cookie('token', token, { maxAge: 3600000 * 2 });
@@ -73,7 +92,8 @@ authRouter.post('/api/admin/login', async (req, res) => {
     if (!admin) {
       throw new Error('No admin with provided email');
     }
-    if (admin.password !== password) {
+    const isPwdValid = await bcrypt.compare(password, participant.password);
+    if (!isPwdValid) {
       throw new Error('Invalid Password');
     }
     const token = await admin.generateJWT();
