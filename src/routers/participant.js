@@ -42,12 +42,7 @@ participantRouter.post(
           throw new Error('Remarks must be less than 500 characters');
         console.log(new Date(preferredDate).toISOString(), workshop.startDate);
         console.log(new Date(preferredDate).toISOString() > workshop.startDate);
-        if (
-          !originCity ||
-          !modeOfTravel ||
-          !preferredDate ||
-          !accommodationRequired
-        )
+        if (!originCity || !modeOfTravel || !preferredDate)
           throw new Error('Invalid Request fill all details');
         if (
           new Date(preferredDate).toISOString() >

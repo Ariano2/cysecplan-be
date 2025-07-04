@@ -58,13 +58,6 @@ authRouter.post('/api/participant/login', async (req, res) => {
 authRouter.post('/api/admin/register', async (req, res) => {
   try {
     const { firstName, lastName, emailId, password, role } = req.body;
-    const admin = new Admin({
-      firstName,
-      lastName,
-      emailId,
-      password,
-      role,
-    });
     const passwordRegex = new RegExp(
       '^(?=.*[a-z])(?=.*[A-Z])(?=.*d)(?=.*[^a-zA-Zd]).{5,}$'
     );
@@ -73,6 +66,13 @@ authRouter.post('/api/admin/register', async (req, res) => {
         'Password must contain minimum 1 uppercase, 1 lowercase, 1 special character and a number and length more than 4'
       );
     const hashedPassword = await bcrypt.hash(password, 10);
+    const admin = new Admin({
+      firstName,
+      lastName,
+      emailId,
+      password: hashedPassword,
+      role,
+    });
     await admin.save();
     const token = await admin.generateJWT();
     res.cookie('token', token, { maxAge: 3600000 * 2 });
@@ -92,7 +92,7 @@ authRouter.post('/api/admin/login', async (req, res) => {
     if (!admin) {
       throw new Error('No admin with provided email');
     }
-    const isPwdValid = await bcrypt.compare(password, participant.password);
+    const isPwdValid = await bcrypt.compare(password, admin.password);
     if (!isPwdValid) {
       throw new Error('Invalid Password');
     }
