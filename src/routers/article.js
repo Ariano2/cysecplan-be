@@ -68,7 +68,7 @@ articleRouter.delete('/api/articles/:id', adminAuth, async (req, res) => {
 });
 
 // Get single article (increments read count)
-articleRouter.get('/api/articles/:id', async (req, res) => {
+articleRouter.get('/api/articles/:id', participantAuth, async (req, res) => {
   const { id } = req.params;
   try {
     if (!mongoose.Types.ObjectId.isValid(id))
@@ -79,7 +79,16 @@ articleRouter.get('/api/articles/:id', async (req, res) => {
     if (!article) throw new Error('Article not found or not published');
 
     await article.incrementRead();
-    res.send(article);
+
+    // Add isLiked field for authenticated users
+    const response = article.toObject();
+    if (req.participant) {
+      response.isLiked = article.activity.likeId.includes(req.participant._id);
+    } else {
+      response.isLiked = false;
+    }
+
+    res.send(response);
   } catch (err) {
     res.status(err.name === 'CastError' ? 400 : 404).send(err.message);
   }
@@ -95,9 +104,19 @@ articleRouter.get('/api/articles', async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit, 10));
+
+    // Add isLiked field for each article if user is authenticated
+    const modifiedArticles = articles.map((article) => {
+      const articleObj = article.toObject();
+      articleObj.isLiked = req.participant
+        ? article.activity.likeId.includes(req.participant._id)
+        : false;
+      return articleObj;
+    });
+
     const total = await Article.countDocuments({});
     res.send({
-      articles,
+      articles: modifiedArticles,
       total,
       page: parseInt(page, 10),
       pages: Math.ceil(total / limit),
@@ -107,12 +126,13 @@ articleRouter.get('/api/articles', async (req, res) => {
   }
 });
 
-// Like article (authenticated users)
+// Toggle like/unlike article (authenticated users)
 articleRouter.post(
   '/api/articles/:id/like',
   participantAuth,
   async (req, res) => {
     const { id } = req.params;
+    const userId = req.participant._id;
 
     try {
       if (!mongoose.Types.ObjectId.isValid(id))
@@ -120,11 +140,23 @@ articleRouter.post(
       const article = await Article.findOne({ _id: id });
       if (!article) throw new Error('Article not found');
 
-      await article.incrementLikes();
-      res.send({
-        message: 'Article liked',
-        total_likes: article.activity.total_likes,
-      });
+      const isAlreadyLiked = article.activity.likeId.includes(userId);
+
+      if (isAlreadyLiked) {
+        await article.decrementLikes(userId);
+        res.send({
+          message: 'Article unliked',
+          total_likes: article.activity.total_likes,
+          isLiked: false,
+        });
+      } else {
+        await article.incrementLikes(userId);
+        res.send({
+          message: 'Article liked',
+          total_likes: article.activity.total_likes,
+          isLiked: true,
+        });
+      }
     } catch (err) {
       res.status(err.name === 'CastError' ? 400 : 404).send(err.message);
     }

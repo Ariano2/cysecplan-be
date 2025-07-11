@@ -5,6 +5,7 @@ const Workshop = require('../models/workshop');
 const Participant = require('../models/participant');
 const Request = require('../models/joinRequest');
 const workshopRouter = express.Router();
+const { createWorkshopValidator } = require('../validators/workshopValidator');
 
 // creat new workshop
 workshopRouter.post('/api/workshop/create', adminAuth, async (req, res) => {
@@ -22,33 +23,14 @@ workshopRouter.post('/api/workshop/create', adminAuth, async (req, res) => {
     materials,
   } = req.body;
   try {
-    // Validate required fields
-    if (!title || !startDate || !endDate)
-      return res
-        .status(400)
-        .json({ message: 'Title, startDate, and endDate are required' });
-    if (title.length < 5 || title.length > 200)
-      return res
-        .status(400)
-        .json({ message: 'Title Length must be 4-200 characters' });
-
-    // Validate date logic
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (start >= end) {
-      return res
-        .status(400)
-        .json({ message: 'End date must be after start date' });
-    }
-
+    createWorkshopValidator(req.body);
+    let regDeadline;
     if (registrationDeadline) {
-      const regDeadline = new Date(registrationDeadline);
-      if (regDeadline > start) {
-        return res.status(400).json({
-          message:
-            'Registration deadline must be before or equal to start date',
-        });
-      }
+      regDeadline = new Date(registrationDeadline);
+      if (regDeadline > new Date(startDate))
+        throw new Error('deadline must be before start of workshop');
+      if (regDeadline < new Date(Date.now()))
+        throw new Error('Registration Deadline cannot be in the past!');
     }
 
     // Validate participants if provided
@@ -57,24 +39,8 @@ workshopRouter.post('/api/workshop/create', adminAuth, async (req, res) => {
         .model('Participant')
         .find({ _id: { $in: participants } });
       if (validParticipants.length !== participants.length) {
-        return res
-          .status(400)
-          .json({ message: 'One or more participant IDs are invalid' });
+        throw new Error('One or more participant ID is invalid');
       }
-    }
-
-    // Validate capacity if provided
-    if (capacity && (isNaN(capacity) || capacity < 1)) {
-      return res
-        .status(400)
-        .json({ message: 'Capacity must be a positive number' });
-    }
-
-    // Validate price if provided
-    if (price && (isNaN(price) || price < 0)) {
-      return res
-        .status(400)
-        .json({ message: 'Price must be a non-negative number' });
     }
     // Create workshop
     const workshop = new Workshop({
@@ -86,7 +52,7 @@ workshopRouter.post('/api/workshop/create', adminAuth, async (req, res) => {
       participants: participants || [],
       location: location || {},
       capacity,
-      registrationDeadline: registrationDeadline || startDate,
+      registrationDeadline: regDeadline || startDate,
       category,
       price: price || 0,
       materials: materials || [],
@@ -104,9 +70,8 @@ workshopRouter.post('/api/workshop/create', adminAuth, async (req, res) => {
       message: 'Workshop created successfully',
       workshop: populatedWorkshop,
     });
-  } catch (error) {
-    console.error('Error creating workshop:', error);
-    return res.status(500).json({ message: err.message });
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
   }
 });
 
@@ -248,34 +213,13 @@ workshopRouter.patch(
       if (!workshopId.match(/^[0-9a-fA-F]{24}$/)) {
         return res.status(400).json({ message: 'Invalid workshop ID format' });
       }
-      if (!title || !startDate || !endDate)
+      const workshop = await Workshop.findById(workshopId);
+      if (!workshop) {
         return res
-          .status(400)
-          .json({ message: 'Title, startDate, and endDate are required' });
-      if (title.length < 5 || title.length > 200)
-        return res
-          .status(400)
-          .json({ message: 'Title Length must be 4-200 characters' });
-
-      // Validate date logic
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      if (start >= end) {
-        return res
-          .status(400)
-          .json({ message: 'End date must be after start date' });
+          .status(404)
+          .json({ message: 'No workshop found with given ID' });
       }
-
-      if (registrationDeadline) {
-        const regDeadline = new Date(registrationDeadline);
-        if (regDeadline > start) {
-          return res.status(400).json({
-            message:
-              'Registration deadline must be before or equal to start date',
-          });
-        }
-      }
-
+      createWorkshopValidator(req.body);
       // Validate participants if provided
       if (participants && participants.length > 0) {
         const validParticipants = await mongoose
@@ -287,74 +231,23 @@ workshopRouter.patch(
             .json({ message: 'One or more participant IDs are invalid' });
         }
       }
-
-      // Validate capacity if provided
-      if (capacity && (isNaN(capacity) || capacity < 1)) {
-        return res
-          .status(400)
-          .json({ message: 'Capacity must be a positive number' });
+      let regDeadline;
+      if (registrationDeadline) {
+        regDeadline = new Date(registrationDeadline);
+        if (regDeadline > new Date(startDate))
+          throw new Error('deadline must be before start of workshop');
+        if (regDeadline < new Date(Date.now()))
+          throw new Error('Registration Deadline cannot be in the past!');
       }
 
-      // Validate price if provided
-      if (price && (isNaN(price) || price < 0)) {
-        return res
-          .status(400)
-          .json({ message: 'Price must be a non-negative number' });
-      }
-
-      const workshop = await Workshop.findById(workshopId);
-      if (!workshop) {
-        return res
-          .status(404)
-          .json({ message: 'No workshop found with given ID' });
-      }
-
-      // Validate required fields if they are being updated
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        if (start >= end) {
-          return res
-            .status(400)
-            .json({ message: 'End date must be after start date' });
-        }
-      }
-
-      if (registrationDeadline && startDate) {
-        const regDeadline = new Date(registrationDeadline);
-        const start = new Date(startDate);
-        if (regDeadline > start) {
-          return res.status(400).json({
-            message:
-              'Registration deadline must be before or equal to start date',
-          });
-        }
-      }
-
-      // Validate participants
+      // Validate participants if provided
       if (participants && participants.length > 0) {
-        const validParticipants = await Participant.find({
-          _id: { $in: participants },
-        });
+        const validParticipants = await mongoose
+          .model('Participant')
+          .find({ _id: { $in: participants } });
         if (validParticipants.length !== participants.length) {
-          return res
-            .status(400)
-            .json({ message: 'One or more participant IDs are invalid' });
+          throw new Error('One or more participant ID is invalid');
         }
-      }
-
-      // Validate capacity
-      if (capacity && (isNaN(capacity) || capacity < 1)) {
-        return res
-          .status(400)
-          .json({ message: 'Capacity must be a positive number' });
-      }
-
-      // Validate price
-      if (price && (isNaN(price) || price < 0)) {
-        return res
-          .status(400)
-          .json({ message: 'Price must be a non-negative number' });
       }
 
       // Update fields if provided
@@ -382,10 +275,7 @@ workshopRouter.patch(
         workshop: updatedWorkshop,
       });
     } catch (err) {
-      console.error('Error updating workshop:', err);
-      return res
-        .status(500)
-        .json({ message: 'Server error while updating workshop' });
+      return res.status(400).json({ message: err.message });
     }
   }
 );

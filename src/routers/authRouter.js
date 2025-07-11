@@ -2,19 +2,17 @@ const express = require('express');
 const Participant = require('../models/participant');
 const Admin = require('../models/admin');
 const authRouter = express.Router();
+const {
+  validateSignUp,
+  validateLogin,
+} = require('../validators/authValidator');
 const bcrypt = require('bcrypt');
 
 //participant sign up
 authRouter.post('/api/participant/register', async (req, res) => {
   try {
+    validateSignUp(req.body);
     const { firstName, lastName, emailId, password } = req.body;
-    const passwordRegex = new RegExp(
-      '^(?=.*[a-z])(?=.*[A-Z])(?=.*d)(?=.*[^a-zA-Zd]).{5,}$'
-    );
-    if (!passwordRegex.test(password))
-      throw new Error(
-        'Password must contain minimum 1 uppercase, 1 lowercase, 1 special character and a number and length more than 4'
-      );
     const hashedPassword = await bcrypt.hash(password, 10);
     const participant = new Participant({
       firstName,
@@ -36,6 +34,7 @@ authRouter.post('/api/participant/register', async (req, res) => {
 //participant login
 authRouter.post('/api/participant/login', async (req, res) => {
   try {
+    validateLogin(req.body);
     const { emailId, password } = req.body;
     const participant = await Participant.findOne({ emailId });
     if (!participant) {
@@ -57,14 +56,8 @@ authRouter.post('/api/participant/login', async (req, res) => {
 //admin sign up
 authRouter.post('/api/admin/register', async (req, res) => {
   try {
+    validateSignUp(req.body);
     const { firstName, lastName, emailId, password, role } = req.body;
-    const passwordRegex = new RegExp(
-      '^(?=.*[a-z])(?=.*[A-Z])(?=.*d)(?=.*[^a-zA-Zd]).{5,}$'
-    );
-    if (!passwordRegex.test(password))
-      throw new Error(
-        'Password must contain minimum 1 uppercase, 1 lowercase, 1 special character and a number and length more than 4'
-      );
     const hashedPassword = await bcrypt.hash(password, 10);
     const admin = new Admin({
       firstName,
@@ -87,6 +80,7 @@ authRouter.post('/api/admin/register', async (req, res) => {
 //admin login
 authRouter.post('/api/admin/login', async (req, res) => {
   try {
+    validateLogin(req.body);
     const { emailId, password } = req.body;
     const admin = await Admin.findOne({ emailId });
     if (!admin) {

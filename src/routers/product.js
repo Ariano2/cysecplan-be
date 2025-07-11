@@ -5,6 +5,7 @@ const productRouter = express.Router();
 const { participantAuth, adminAuth } = require('../middlewares/auth');
 const Product = require('../models/product');
 const upload = require('../config/multer');
+const { productValidator } = require('../validators/productValidator');
 
 // Create new product
 productRouter.post(
@@ -15,16 +16,7 @@ productRouter.post(
     const { name, stock, category, price } = req.body;
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
     try {
-      if (!name || name.length > 100 || name.length < 3)
-        throw new Error('name length between 3 to 100');
-      if (!price || price < 1 || price > 10000000)
-        throw new Error('price between 1 to 10000000');
-      const validCategories = ['insurance', 'book', 'course'];
-      if (!validCategories.includes(category))
-        throw new Error('category is not valid');
-      if (stock && (stock < 0 || stock > 100000))
-        throw new Error('stock is between 1 to 100000');
-
+      productValidator(req.body);
       const product = new Product({
         name,
         price,
@@ -52,19 +44,9 @@ productRouter.patch(
     const imageFile = req.file;
 
     try {
-      if (name && (name.length > 100 || name.length < 3))
-        throw new Error('name length between 3 to 100');
-      if (price && (price < 1 || price > 10000000))
-        throw new Error('price between 1 to 10000000');
-      const validCategories = ['insurance', 'book', 'course'];
-      if (category && !validCategories.includes(category))
-        throw new Error('category is not valid');
-      if (stock && (stock < 0 || stock > 100000))
-        throw new Error('stock is between 1 to 100000');
-
+      productValidator(req.body);
       const product = await Product.findById(productId);
       if (!product) throw new Error('invalid product ID');
-
       // If new image is uploaded, optionally delete the old one
       if (imageFile) {
         if (product.imageUrl) {

@@ -17,13 +17,9 @@ const workshopSchema = new Schema(
       isVirtual: { type: Boolean, default: false },
       link: { type: String, maxLength: 500 },
     },
-    capacity: { type: Number, min: 1 },
+    capacity: { type: Number, min: 1, max: 10000 },
     registrationDeadline: { type: Date },
-    category: {
-      type: String,
-      enum: ['technical', 'creative', 'other'],
-    },
-    price: { type: Number, min: 0, default: 0 },
+    price: { type: Number, min: 0, max: 10000, default: 0 },
     materials: [
       {
         name: { type: String, maxLength: 100 },

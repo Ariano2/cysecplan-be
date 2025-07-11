@@ -18,6 +18,8 @@ const articleSchema = new Schema(
     },
     content: {
       type: String,
+      minlength: [50, 'Content must be at least 50 characters'],
+      maxlength: [2000, 'Content cannot exceed 2000 characters'],
       required: [true, 'Content is required'],
       trim: true,
     },
@@ -28,6 +30,11 @@ const articleSchema = new Schema(
     },
     activity: {
       total_likes: { type: Number, default: 0, min: 0 },
+      likeId: {
+        type: [Schema.Types.ObjectId],
+        default: [],
+        ref: 'Participant',
+      },
       total_comments: { type: Number, default: 0, min: 0 },
       total_reads: { type: Number, default: 0, min: 0 },
     },
@@ -49,14 +56,21 @@ const articleSchema = new Schema(
 articleSchema.index({ author: 1 });
 
 // Methods
-articleSchema.methods.incrementLikes = async function () {
-  this.activity.total_likes += 1;
-  await this.save();
+articleSchema.methods.incrementLikes = async function (userId) {
+  if (!this.activity.likeId.includes(userId)) {
+    this.activity.total_likes += 1;
+    this.activity.likeId.push(userId);
+    await this.save();
+  }
 };
 
-articleSchema.methods.decrementLikes = async function () {
-  this.activity.total_likes = Math.max(0, this.activity.total_likes - 1);
-  await this.save();
+articleSchema.methods.decrementLikes = async function (userId) {
+  const index = this.activity.likeId.indexOf(userId);
+  if (index !== -1) {
+    this.activity.total_likes = Math.max(0, this.activity.total_likes - 1);
+    this.activity.likeId.splice(index, 1);
+    await this.save();
+  }
 };
 
 articleSchema.methods.incrementRead = async function () {
