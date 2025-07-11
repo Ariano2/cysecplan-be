@@ -280,22 +280,26 @@ workshopRouter.patch(
   }
 );
 
-// delete a workshop
+// delete a workshop along with associated join requests
 workshopRouter.delete('/api/workshop/delete/:workshopId', async (req, res) => {
   const { workshopId } = req.params;
   try {
     if (!workshopId.match(/^[0-9a-fA-F]{24}$/)) {
-      throw new Error('Invalid ID, please use a valid mongoDB id');
+      throw new Error('Invalid ID, please use a valid MongoDB ID');
     }
+
     const workshop = await Workshop.findById(workshopId);
     if (!workshop) {
       return res
         .status(404)
         .json({ message: 'No workshop found with given ID' });
     }
-    // delete record
+
+    // Delete all associated join requests
+    await Request.deleteMany({ workshopId });
+    // Delete the workshop itself
     await Workshop.findByIdAndDelete(workshopId);
-    res.send('Workshop deleted successfully');
+    res.send('Workshop and associated join requests deleted successfully');
   } catch (err) {
     return res.status(400).send('ERROR: ' + err.message);
   }
